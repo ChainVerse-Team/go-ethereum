@@ -280,6 +280,33 @@ func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash,
 	return json.tx, err
 }
 
+// BlockRewardsInBlock returns the block reward info of the given block by block hash
+func (ec *Client) BlockRewardsInBlock(ctx context.Context, blockHash common.Hash) (*types.BlockRewards, error) {
+	var raw *types.RPCBlockRewards
+	err := ec.c.CallContext(ctx, &raw, "eth_getBlockRewardsInfo", blockHash)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ethereum.NotFound
+	}
+
+	return raw.ToBlockRewards(), nil
+}
+
+// TotalBlockRewardDistributed returns total tokens have been distributed through reward and bonus from mining process
+func (ec *Client) TotalBlockRewardDistributed(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_getTotalBlockRewardDistributed"); err != nil {
+		return nil, err
+	}
+	var total *big.Int
+	if err := json.Unmarshal(raw, total); err != nil {
+		return nil, err
+	}
+	return total, nil
+}
+
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
 // Note that the receipt is not available for pending transactions.
 func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
