@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
 )
 
@@ -15,11 +16,11 @@ const (
 
 type RPCBlockReward struct {
 	Address          common.Address `json:"address"`
-	Role             uint64         `json:"role"`
-	Epoch            uint64         `json:"epoch"`
-	Number           uint64         `json:"number"`
-	Amount           *big.Int       `json:"amount"`
-	TotalFromGenesis *big.Int       `json:"totalFromGenesis"`
+	Role             hexutil.Uint64 `json:"role"`
+	Epoch            hexutil.Uint64 `json:"epoch"`
+	Number           hexutil.Uint64 `json:"number"`
+	Amount           hexutil.Big    `json:"amount"`
+	TotalFromGenesis hexutil.Big    `json:"totalFromGenesis"`
 }
 
 type RPCBlockRewards []RPCBlockReward
@@ -50,12 +51,12 @@ func (br *BlockReward) SetRole(r uint64) {
 func (r *RPCBlockReward) ToBlockReward() *BlockReward {
 	res := &BlockReward{
 		Address:          r.Address,
-		Epoch:            r.Epoch,
-		Number:           r.Number,
-		Amount:           r.Amount,
-		TotalFromGenesis: r.TotalFromGenesis,
+		Epoch:            uint64(r.Epoch),
+		Number:           uint64(r.Number),
+		Amount:           (*big.Int)(&r.Amount),
+		TotalFromGenesis: (*big.Int)(&r.TotalFromGenesis),
 	}
-	res.SetRole(r.Role)
+	res.SetRole(uint64(r.Role))
 
 	return res
 }
