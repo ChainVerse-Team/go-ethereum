@@ -300,11 +300,11 @@ func (ec *Client) TotalBlockRewardDistributed(ctx context.Context) (*big.Int, er
 	if err := ec.c.CallContext(ctx, &raw, "eth_getTotalBlockRewardDistributed"); err != nil {
 		return nil, err
 	}
-	var total *big.Int
+	var total hexutil.Big
 	if err := json.Unmarshal(raw, total); err != nil {
 		return nil, err
 	}
-	return total, nil
+	return (*big.Int)(&total), nil
 }
 
 // TransactionReceipt returns the receipt of a transaction by transaction hash.

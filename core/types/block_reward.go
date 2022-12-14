@@ -48,6 +48,17 @@ func (br *BlockReward) SetRole(r uint64) {
 	br.Role = role
 }
 
+func (br *BlockReward) GetRole() string {
+	switch br.Role {
+	case Validator:
+		return "validator"
+	case Covenant:
+		return "covenant"
+	default:
+		return ""
+	}
+}
+
 func (r *RPCBlockReward) ToBlockReward() *BlockReward {
 	res := &BlockReward{
 		Address:          r.Address,
@@ -70,4 +81,12 @@ func (r *RPCBlockRewards) ToBlockRewards() *BlockRewards {
 		res.blockRewards[i] = *tmp[i].ToBlockReward()
 	}
 	return res
+}
+
+func (b *BlockRewards) Len() int {
+	return len(b.blockRewards)
+}
+
+func (b *BlockRewards) Array() []BlockReward {
+	return b.blockRewards
 }
