@@ -301,7 +301,7 @@ func (ec *Client) TotalBlockRewardDistributed(ctx context.Context) (*big.Int, er
 		return nil, err
 	}
 	var total hexutil.Big
-	if err := json.Unmarshal(raw, total); err != nil {
+	if err := json.Unmarshal(raw, &total); err != nil {
 		return nil, err
 	}
 	return (*big.Int)(&total), nil
