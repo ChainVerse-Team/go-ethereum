@@ -117,7 +117,7 @@ func (r *RewardRecord) GetRunningTotalSinceLastMonth() *big.Int {
 	}
 	lastMth := r.GetRunningLastMonth()
 	if lastMth == nil {
-		return nil
+		return today
 	}
 
 	tmp := big.NewInt(0).Set(today)
@@ -133,11 +133,24 @@ func (r *RewardRecord) GetRunningTotalSinceLastPurge() *big.Int {
 	tmp := big.NewInt(0).Set(today)
 	todayInd := len(r.Daily) - 1
 	if todayInd < PurgePeriod {
-		// last purge is at 0
-		purgeInd := 0
-		purge := r.GetRunningTotalAt(purgeInd)
-		return tmp.Sub(tmp, purge)
+		// last purge index could be 0 if there's no month record. Hence, the current running total today
+		// in case there's monthly records. LastPurge = Today - LastMonth
+		if len(r.Monthly) == 0 {
+			return today
+		}
+		subAmt := r.GetRunningTotalSinceLastMonth()
+		return tmp.Sub(tmp, subAmt)
 	}
-	purge := r.GetRunningTotalAt(PurgePeriod)
+	purge := r.GetRunningTotalAt(PurgePeriod - 1)
 	return tmp.Sub(tmp, purge)
+}
+
+func (r *RewardRecord) GetRunningTotalOverLastWeek() *big.Int {
+	_size := len(r.Daily)
+	weekInd := _size / 7 * 7
+	if weekInd == 0 {
+		return r.GetRunningTotalToday()
+	}
+	tmp := big.NewInt(0).Set(r.GetRunningTotalToday())
+	return tmp.Sub(tmp, r.GetRunningTotalAt(weekInd))
 }
