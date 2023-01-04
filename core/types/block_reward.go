@@ -1,92 +1,143 @@
 package types
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"math/big"
 )
-
-type BlockRewardRole uint64
 
 const (
-	Validator BlockRewardRole = iota
-	Covenant
-	Unknown
+	MaxDateInMonth = 28
+	MaxMonthInYear = 12
+	PurgePeriod    = 14
 )
 
-type RPCBlockReward struct {
-	Address          common.Address `json:"address"`
-	Role             hexutil.Uint64 `json:"role"`
-	Epoch            hexutil.Uint64 `json:"epoch"`
-	Number           hexutil.Uint64 `json:"number"`
-	Amount           hexutil.Big    `json:"amount"`
-	TotalFromGenesis hexutil.Big    `json:"totalFromGenesis"`
+type BlockRewardInsertType uint8
+
+type NodeRewardStorage struct {
+	ValidatorRecords []ValidatorRewardRecord
+	CovenantRecords  []CovenantNFTRewardRecord
 }
 
-type RPCBlockRewards []RPCBlockReward
-
-type BlockReward struct {
-	Address          common.Address
-	Role             BlockRewardRole
-	Epoch            uint64
-	Number           uint64
-	Amount           *big.Int
-	TotalFromGenesis *big.Int
+// RewardRecord new day or month will be pushed at the end
+type RewardRecord struct {
+	Daily   []*big.Int // starts from 0..27
+	Monthly []*big.Int // starts from 0..11. Reset Daily when new month begins
 }
 
-type BlockRewards struct {
-	blockRewards []BlockReward
+type ValidatorRewardRecord struct {
+	*RewardRecord
+	Address common.Address
 }
 
-func (br *BlockReward) SetRole(r uint64) {
-	role := BlockRewardRole(r)
-	if role > Unknown || role < Validator {
-		br.Role = Unknown
-		return
+type CovenantNFTRewardRecord struct {
+	*RewardRecord
+	TokenID uint64
+}
+
+// rpc type for RewardRecord
+type rewardRecord struct {
+	Daily   []hexutil.Big `json:"daily"`
+	Monthly []hexutil.Big `json:"monthly"`
+}
+
+type RPCValidatorRewardRecord struct {
+	rewardRecord `json:"rewardRecord"`
+	Address      common.Address `json:"address"`
+}
+
+type RPCCovenantNFTRewardRecord struct {
+	rewardRecord `json:"rewardRecord"`
+	TokenID      hexutil.Uint64 `json:"tokenID"`
+}
+
+func (v *RPCValidatorRewardRecord) ToValidatorRewardRecord() *ValidatorRewardRecord {
+	rs := &ValidatorRewardRecord{
+		RewardRecord: &RewardRecord{
+			Daily:   make([]*big.Int, len(v.Daily)),
+			Monthly: make([]*big.Int, len(v.Monthly)),
+		},
+		Address: v.Address,
+	}
+	for i, d := range v.Daily {
+		rs.Daily[i] = d.ToInt()
+	}
+	for i, m := range v.Monthly {
+		rs.Monthly[i] = m.ToInt()
 	}
 
-	br.Role = role
+	return rs
 }
 
-func (br *BlockReward) GetRole() string {
-	switch br.Role {
-	case Validator:
-		return "validator"
-	case Covenant:
-		return "covenant"
-	default:
-		return ""
+func (c *RPCCovenantNFTRewardRecord) ToCovenantNFTRewardRecord() *CovenantNFTRewardRecord {
+	rs := &CovenantNFTRewardRecord{
+		RewardRecord: &RewardRecord{
+			Daily:   make([]*big.Int, len(c.Daily)),
+			Monthly: make([]*big.Int, len(c.Monthly)),
+		},
+		TokenID: uint64(c.TokenID),
 	}
-}
-
-func (r *RPCBlockReward) ToBlockReward() *BlockReward {
-	res := &BlockReward{
-		Address:          r.Address,
-		Epoch:            uint64(r.Epoch),
-		Number:           uint64(r.Number),
-		Amount:           (*big.Int)(&r.Amount),
-		TotalFromGenesis: (*big.Int)(&r.TotalFromGenesis),
+	for i, d := range c.Daily {
+		rs.Daily[i] = d.ToInt()
 	}
-	res.SetRole(uint64(r.Role))
-
-	return res
-}
-
-func (r *RPCBlockRewards) ToBlockRewards() *BlockRewards {
-	res := &BlockRewards{
-		blockRewards: make([]BlockReward, len(*r)),
+	for i, m := range c.Monthly {
+		rs.Monthly[i] = m.ToInt()
 	}
-	for i := 0; i < len(*r); i++ {
-		tmp := *r
-		res.blockRewards[i] = *tmp[i].ToBlockReward()
+
+	return rs
+}
+
+func (r *RewardRecord) GetRunningTotalToday() *big.Int {
+	if len(r.Daily) == 0 {
+		return nil
 	}
-	return res
+	return r.Daily[len(r.Daily)-1]
 }
 
-func (b *BlockRewards) Len() int {
-	return len(b.blockRewards)
+func (r *RewardRecord) GetRunningLastMonth() *big.Int {
+	if len(r.Monthly) == 0 {
+		return nil
+	}
+	return r.Monthly[len(r.Monthly)-1]
 }
 
-func (b *BlockRewards) Array() []BlockReward {
-	return b.blockRewards
+func (r *RewardRecord) GetRunningTotalAt(i int) *big.Int {
+	_size := len(r.Daily)
+	if i < 0 || i >= _size {
+		return nil
+	}
+	return r.Daily[i]
+}
+
+func (r *RewardRecord) GetRunningTotalSinceLastMonth() *big.Int {
+	today := r.GetRunningTotalToday()
+	if today == nil {
+		return nil
+	}
+	lastMth := r.GetRunningLastMonth()
+	if lastMth == nil {
+		return nil
+	}
+
+	tmp := big.NewInt(0).Set(today)
+	return tmp.Sub(tmp, lastMth)
+}
+
+func (r *RewardRecord) GetRunningTotalSinceLastPurge() *big.Int {
+	today := r.GetRunningTotalToday()
+	if today == nil {
+		return nil
+	}
+
+	tmp := big.NewInt(0).Set(today)
+	todayInd := len(r.Daily) - 1
+	if todayInd < PurgePeriod {
+		// last purge is at 0
+		purgeInd := 0
+		purge := r.GetRunningTotalAt(purgeInd)
+		return tmp.Sub(tmp, purge)
+	}
+	purge := r.GetRunningTotalAt(PurgePeriod)
+	return tmp.Sub(tmp, purge)
 }

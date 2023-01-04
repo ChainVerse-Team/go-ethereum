@@ -280,10 +280,10 @@ func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash,
 	return json.tx, err
 }
 
-// BlockRewardsInBlock returns the block reward info of the given block by block hash
-func (ec *Client) BlockRewardsInBlock(ctx context.Context, blockHash common.Hash) (*types.BlockRewards, error) {
-	var raw *types.RPCBlockRewards
-	err := ec.c.CallContext(ctx, &raw, "eth_getBlockRewardsInfo", blockHash)
+// GetRunningRewardsByAddress returns the block reward earned by an address for the last 28 days and 12 months
+func (ec *Client) GetRunningRewardsByAddress(ctx context.Context, address common.Address) (*types.ValidatorRewardRecord, error) {
+	var raw *types.RPCValidatorRewardRecord
+	err := ec.c.CallContext(ctx, &raw, "eth_getRunningRewardsByAddress", address)
 	if err != nil {
 		return nil, err
 	}
@@ -291,13 +291,27 @@ func (ec *Client) BlockRewardsInBlock(ctx context.Context, blockHash common.Hash
 		return nil, ethereum.NotFound
 	}
 
-	return raw.ToBlockRewards(), nil
+	return raw.ToValidatorRewardRecord(), nil
+}
+
+// GetRunningRewardsByNFT returns the block reward earned by a covenant nft for the last 28 days and 12 months
+func (ec *Client) GetRunningRewardsByNFT(ctx context.Context, tokenID uint64) (*types.CovenantNFTRewardRecord, error) {
+	var raw *types.RPCCovenantNFTRewardRecord
+	err := ec.c.CallContext(ctx, &raw, "eth_getRunningRewardsByNFT", tokenID)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ethereum.NotFound
+	}
+
+	return raw.ToCovenantNFTRewardRecord(), nil
 }
 
 // TotalBlockRewardDistributed returns total tokens have been distributed through reward and bonus from mining process
 func (ec *Client) TotalBlockRewardDistributed(ctx context.Context) (*big.Int, error) {
 	var raw json.RawMessage
-	if err := ec.c.CallContext(ctx, &raw, "eth_getTotalBlockRewardDistributed"); err != nil {
+	if err := ec.c.CallContext(ctx, &raw, "eth_getTotalNodeRewardDistributed"); err != nil {
 		return nil, err
 	}
 	var total hexutil.Big
