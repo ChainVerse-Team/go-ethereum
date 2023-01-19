@@ -20,10 +20,14 @@ type NodeRewardStorage struct {
 	CovenantRecords  []CovenantNFTRewardRecord
 }
 
-// RewardRecord new day or month will be pushed at the end
 type RewardRecord struct {
-	Daily   []*big.Int // starts from 0..27
-	Monthly []*big.Int // starts from 0..11. Reset Daily when new month begins
+	RunningTotal               *big.Int   // running total since genesis
+	Daily                      []*big.Int // daily history for last 28 days
+	Monthly                    []*big.Int // monthly earnings for 12 months
+	AmountEarnedToday          *big.Int   // total amount of tokens earned today
+	AmountEarnedSinceLastPurge *big.Int   // total amount of tokens earned since last purge
+	AmountEarnedThisMoon       *big.Int   // total amount of tokens earned in this moon
+	moonCalendarCounter        int        // is used to track the current date on a 28-day calendar (starts at 0)
 }
 
 type ValidatorRewardRecord struct {
@@ -37,34 +41,59 @@ type CovenantNFTRewardRecord struct {
 }
 
 // rpc type for RewardRecord
-type rewardRecord struct {
-	Daily   []hexutil.Big `json:"daily"`
-	Monthly []hexutil.Big `json:"monthly"`
+type rpcRewardRecord struct {
+	RunningTotal               hexutil.Big    `json:"runningTotal"`
+	Daily                      []hexutil.Big  `json:"daily"`
+	Monthly                    []hexutil.Big  `json:"monthly"`
+	AmountEarnedToday          hexutil.Big    `json:"amountEarnedToday"`
+	AmountEarnedSinceLastPurge hexutil.Big    `json:"amountEarnedSinceLastPurge"`
+	AmountEarnedThisMoon       hexutil.Big    `json:"amountEarnedThisMoon"`
+	MoonCalendarCounter        hexutil.Uint64 `json:"moonCalendarCounter"`
 }
 
 type RPCValidatorRewardRecord struct {
-	rewardRecord `json:"rewardRecord"`
-	Address      common.Address `json:"address"`
+	rpcRewardRecord `json:"rewardRecord"`
+	Address         common.Address `json:"address"`
 }
 
 type RPCCovenantNFTRewardRecord struct {
-	rewardRecord `json:"rewardRecord"`
-	TokenID      hexutil.Uint64 `json:"tokenID"`
+	rpcRewardRecord `json:"rewardRecord"`
+	TokenID         hexutil.Uint64 `json:"tokenID"`
+}
+
+func newRewardRecord() *RewardRecord {
+	return &RewardRecord{
+		RunningTotal:               big.NewInt(0),
+		Daily:                      make([]*big.Int, 0),
+		Monthly:                    make([]*big.Int, 0),
+		AmountEarnedToday:          big.NewInt(0),
+		AmountEarnedSinceLastPurge: big.NewInt(0),
+		AmountEarnedThisMoon:       big.NewInt(0),
+		moonCalendarCounter:        0,
+	}
+}
+
+func toRewardRecord(rpcRc rpcRewardRecord) *RewardRecord {
+	rs := newRewardRecord()
+	rs.RunningTotal = rpcRc.RunningTotal.ToInt()
+	for _, d := range rpcRc.Daily {
+		rs.Daily = append(rs.Daily, d.ToInt())
+	}
+	for _, m := range rpcRc.Monthly {
+		rs.Monthly = append(rs.Monthly, m.ToInt())
+	}
+	rs.AmountEarnedToday = rpcRc.AmountEarnedToday.ToInt()
+	rs.AmountEarnedSinceLastPurge = rpcRc.AmountEarnedSinceLastPurge.ToInt()
+	rs.AmountEarnedThisMoon = rpcRc.AmountEarnedThisMoon.ToInt()
+	rs.moonCalendarCounter = int(rpcRc.MoonCalendarCounter)
+
+	return rs
 }
 
 func (v *RPCValidatorRewardRecord) ToValidatorRewardRecord() *ValidatorRewardRecord {
 	rs := &ValidatorRewardRecord{
-		RewardRecord: &RewardRecord{
-			Daily:   make([]*big.Int, len(v.Daily)),
-			Monthly: make([]*big.Int, len(v.Monthly)),
-		},
-		Address: v.Address,
-	}
-	for i, d := range v.Daily {
-		rs.Daily[i] = d.ToInt()
-	}
-	for i, m := range v.Monthly {
-		rs.Monthly[i] = m.ToInt()
+		RewardRecord: toRewardRecord(v.rpcRewardRecord),
+		Address:      v.Address,
 	}
 
 	return rs
@@ -72,96 +101,58 @@ func (v *RPCValidatorRewardRecord) ToValidatorRewardRecord() *ValidatorRewardRec
 
 func (c *RPCCovenantNFTRewardRecord) ToCovenantNFTRewardRecord() *CovenantNFTRewardRecord {
 	rs := &CovenantNFTRewardRecord{
-		RewardRecord: &RewardRecord{
-			Daily:   make([]*big.Int, len(c.Daily)),
-			Monthly: make([]*big.Int, len(c.Monthly)),
-		},
-		TokenID: uint64(c.TokenID),
-	}
-	for i, d := range c.Daily {
-		rs.Daily[i] = d.ToInt()
-	}
-	for i, m := range c.Monthly {
-		rs.Monthly[i] = m.ToInt()
+		RewardRecord: toRewardRecord(c.rpcRewardRecord),
+		TokenID:      uint64(c.TokenID),
 	}
 
 	return rs
 }
 
-func (r *RewardRecord) GetRunningTotalToday() *big.Int {
-	if len(r.Daily) == 0 {
-		return nil
+// GetTodayIndex returns how many days have passed on 28-day calendar
+func (r *RewardRecord) GetTodayIndex() int {
+	if r.moonCalendarCounter < 0 || r.moonCalendarCounter > MaxDateInMonth {
+		return 0
 	}
-	return r.Daily[len(r.Daily)-1]
+	return r.moonCalendarCounter
 }
 
-func (r *RewardRecord) GetRunningLastMonth() *big.Int {
+func (r *RewardRecord) GetTotalTokensEarnedToday() *big.Int {
+	return r.AmountEarnedToday
+}
+
+func (r *RewardRecord) GetTotalTokensEarnedLastMonth() *big.Int {
+	if r == nil || r.Monthly == nil {
+		return nil
+	}
 	if len(r.Monthly) == 0 {
 		return nil
 	}
 	return r.Monthly[len(r.Monthly)-1]
 }
 
-func (r *RewardRecord) GetRunningTotalAt(i int) *big.Int {
-	_size := len(r.Daily)
-	if i < 0 || i >= _size {
+// GetTotalTokensEarnedSince returns total amount of tokens earned from index
+func (r *RewardRecord) GetTotalTokensEarnedSince(i int) *big.Int {
+	today := r.GetTotalTokensEarnedToday()
+	if r == nil || r.Daily == nil || today == nil || i < 0 {
 		return nil
 	}
-	return r.Daily[i]
+
+	totalSinceIndex := big.NewInt(0)
+	for j := i; j < len(r.Daily); j++ {
+		if r.Daily[j] == nil {
+			return nil
+		}
+		totalSinceIndex = totalSinceIndex.Add(totalSinceIndex, r.Daily[j])
+	}
+	totalSinceIndex = totalSinceIndex.Add(totalSinceIndex, today)
+
+	return totalSinceIndex
 }
 
-func (r *RewardRecord) GetRunningTotalSinceLastMonth() *big.Int {
-	today := r.GetRunningTotalToday()
-	if today == nil {
-		return nil
-	}
-
-	lastMth := r.GetRunningLastMonth()
-	if lastMth == nil {
-		return today
-	}
-
-	tmp := big.NewInt(0).Set(today)
-	return tmp.Sub(tmp, lastMth)
+func (r *RewardRecord) GetTotalTokensEarnedSinceLastMonth() *big.Int {
+	return r.AmountEarnedThisMoon
 }
 
-func (r *RewardRecord) GetRunningTotalSinceLastPurge() *big.Int {
-	today := r.GetRunningTotalToday()
-	if today == nil {
-		return nil
-	}
-
-	tmp := big.NewInt(0).Set(today)
-	todayInd := len(r.Daily) - 1
-	if todayInd < PurgePeriod {
-		// last purge index could be 0 if there's no month record. Hence, the current running total today
-		// in case there's monthly records. LastPurge = Today - LastMonth
-		return r.GetRunningTotalSinceLastMonth()
-	}
-	purge := r.GetRunningTotalAt(PurgePeriod - 1)
-	if purge == nil {
-		return nil
-	}
-	return tmp.Sub(tmp, purge)
-}
-
-func (r *RewardRecord) GetRunningTotalOverLastWeek() *big.Int {
-	if r == nil || r.Daily == nil {
-		return nil
-	}
-	_size := len(r.Daily)
-	weekIndex := _size/7*7 - 1
-	today := r.GetRunningTotalToday()
-	if today == nil {
-		return nil
-	}
-	if weekIndex == -1 {
-		return r.GetRunningTotalSinceLastMonth()
-	}
-	tmp := big.NewInt(0).Set(today)
-	lastWeekTotal := r.GetRunningTotalAt(weekIndex)
-	if lastWeekTotal == nil {
-		return nil
-	}
-	return tmp.Sub(tmp, lastWeekTotal)
+func (r *RewardRecord) GetTotalTokensEarnedSinceLastPurge() *big.Int {
+	return r.AmountEarnedSinceLastPurge
 }
