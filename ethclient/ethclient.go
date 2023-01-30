@@ -308,10 +308,23 @@ func (ec *Client) GetRunningRewardsByNFT(ctx context.Context, tokenID uint64) (*
 	return raw.ToCovenantNFTRewardRecord(), nil
 }
 
-// TotalBlockRewardDistributed returns total tokens have been distributed through reward and bonus from mining process
-func (ec *Client) TotalBlockRewardDistributed(ctx context.Context) (*big.Int, error) {
+// GetTotalSupply returns total amount of tokens ever issued. This covers all Mining Reward and Mining Bonus have been issued to Proposers and Covenant Members
+func (ec *Client) GetTotalSupply(ctx context.Context) (*big.Int, error) {
 	var raw json.RawMessage
-	if err := ec.c.CallContext(ctx, &raw, "eth_getTotalNodeRewardDistributed"); err != nil {
+	if err := ec.c.CallContext(ctx, &raw, "eth_totalSupply"); err != nil {
+		return nil, err
+	}
+	var total hexutil.Big
+	if err := json.Unmarshal(raw, &total); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&total), nil
+}
+
+// GetTotalSupplyCovenant returns total amount of tokens ever issued. This covers only Mining Bonus have been issued to Covenant Members
+func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_totalSupplyCovenant"); err != nil {
 		return nil, err
 	}
 	var total hexutil.Big

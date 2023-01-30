@@ -16,8 +16,9 @@ const (
 type BlockRewardInsertType uint8
 
 type NodeRewardStorage struct {
-	ValidatorRecords []ValidatorRewardRecord
-	CovenantRecords  []CovenantNFTRewardRecord
+	ValidatorRecords    []ValidatorRewardRecord
+	CovenantRecords     []CovenantNFTRewardRecord
+	moonCalendarCounter int
 }
 
 type RewardRecord struct {
@@ -27,7 +28,6 @@ type RewardRecord struct {
 	AmountEarnedToday          *big.Int   // total amount of tokens earned today
 	AmountEarnedSinceLastPurge *big.Int   // total amount of tokens earned since last purge
 	AmountEarnedThisMoon       *big.Int   // total amount of tokens earned in this moon
-	moonCalendarCounter        int        // is used to track the current date on a 28-day calendar (starts at 0)
 }
 
 type ValidatorRewardRecord struct {
@@ -42,13 +42,12 @@ type CovenantNFTRewardRecord struct {
 
 // rpc type for RewardRecord
 type rpcRewardRecord struct {
-	RunningTotal               hexutil.Big    `json:"runningTotal"`
-	Daily                      []hexutil.Big  `json:"daily"`
-	Monthly                    []hexutil.Big  `json:"monthly"`
-	AmountEarnedToday          hexutil.Big    `json:"amountEarnedToday"`
-	AmountEarnedSinceLastPurge hexutil.Big    `json:"amountEarnedSinceLastPurge"`
-	AmountEarnedThisMoon       hexutil.Big    `json:"amountEarnedThisMoon"`
-	MoonCalendarCounter        hexutil.Uint64 `json:"moonCalendarCounter"`
+	RunningTotal               hexutil.Big   `json:"runningTotal"`
+	Daily                      []hexutil.Big `json:"daily"`
+	Monthly                    []hexutil.Big `json:"monthly"`
+	AmountEarnedToday          hexutil.Big   `json:"amountEarnedToday"`
+	AmountEarnedSinceLastPurge hexutil.Big   `json:"amountEarnedSinceLastPurge"`
+	AmountEarnedThisMoon       hexutil.Big   `json:"amountEarnedThisMoon"`
 }
 
 type RPCValidatorRewardRecord struct {
@@ -69,7 +68,6 @@ func newRewardRecord() *RewardRecord {
 		AmountEarnedToday:          big.NewInt(0),
 		AmountEarnedSinceLastPurge: big.NewInt(0),
 		AmountEarnedThisMoon:       big.NewInt(0),
-		moonCalendarCounter:        0,
 	}
 }
 
@@ -85,7 +83,6 @@ func toRewardRecord(rpcRc rpcRewardRecord) *RewardRecord {
 	rs.AmountEarnedToday = rpcRc.AmountEarnedToday.ToInt()
 	rs.AmountEarnedSinceLastPurge = rpcRc.AmountEarnedSinceLastPurge.ToInt()
 	rs.AmountEarnedThisMoon = rpcRc.AmountEarnedThisMoon.ToInt()
-	rs.moonCalendarCounter = int(rpcRc.MoonCalendarCounter)
 
 	return rs
 }
@@ -106,14 +103,6 @@ func (c *RPCCovenantNFTRewardRecord) ToCovenantNFTRewardRecord() *CovenantNFTRew
 	}
 
 	return rs
-}
-
-// GetTodayIndex returns how many days have passed on 28-day calendar
-func (r *RewardRecord) GetTodayIndex() int {
-	if r.moonCalendarCounter < 0 || r.moonCalendarCounter > MaxDateInMonth {
-		return 0
-	}
-	return r.moonCalendarCounter
 }
 
 func (r *RewardRecord) GetTotalTokensEarnedToday() *big.Int {
