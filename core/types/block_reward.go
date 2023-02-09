@@ -1,7 +1,9 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -144,4 +146,32 @@ func (r *RewardRecord) GetTotalTokensEarnedSinceLastMonth() *big.Int {
 
 func (r *RewardRecord) GetTotalTokensEarnedSinceLastPurge() *big.Int {
 	return r.AmountEarnedSinceLastPurge
+}
+
+func (s *NodeRewardStorage) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("MoonCounter: %d\n", s.moonCalendarCounter))
+	sb.WriteString(fmt.Sprintf("ValidatorRecords: %v\n", s.ValidatorRecords))
+	sb.WriteString(fmt.Sprintf("CovenantRecords: %v\n", s.CovenantRecords))
+
+	return sb.String()
+}
+
+func (r *RewardRecord) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("[Daily: %v, ", r.Daily))
+	sb.WriteString(fmt.Sprintf("Monthly: %v, ", r.Monthly))
+	sb.WriteString(fmt.Sprintf("RunningTotal: %v, ", r.RunningTotal))
+	sb.WriteString(fmt.Sprintf("AmountEarnedThisMoon: %v, ", r.AmountEarnedThisMoon))
+	sb.WriteString(fmt.Sprintf("AmountEarnedSinceLastPurge: %v, ", r.AmountEarnedSinceLastPurge))
+	sb.WriteString(fmt.Sprintf("AmountEarnedToday: %v]", r.AmountEarnedToday))
+	return sb.String()
+}
+
+func (v *ValidatorRewardRecord) String() string {
+	return fmt.Sprintf("[Address: %v, record: %s]", v.Address, v.RewardRecord.String())
+}
+
+func (c *CovenantNFTRewardRecord) String() string {
+	return fmt.Sprintf("[TokenID: %v, record: %s]", c.TokenID, c.RewardRecord.String())
 }
