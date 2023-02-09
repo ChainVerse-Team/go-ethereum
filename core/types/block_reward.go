@@ -42,12 +42,12 @@ type CovenantNFTRewardRecord struct {
 
 // rpc type for RewardRecord
 type rpcRewardRecord struct {
-	RunningTotal               hexutil.Big   `json:"runningTotal"`
-	Daily                      []hexutil.Big `json:"daily"`
-	Monthly                    []hexutil.Big `json:"monthly"`
-	AmountEarnedToday          hexutil.Big   `json:"amountEarnedToday"`
-	AmountEarnedSinceLastPurge hexutil.Big   `json:"amountEarnedSinceLastPurge"`
-	AmountEarnedThisMoon       hexutil.Big   `json:"amountEarnedThisMoon"`
+	RunningTotal               *hexutil.Big   `json:"runningTotal"`
+	Daily                      []*hexutil.Big `json:"daily"`
+	Monthly                    []*hexutil.Big `json:"monthly"`
+	AmountEarnedToday          *hexutil.Big   `json:"amountEarnedToday"`
+	AmountEarnedSinceLastPurge *hexutil.Big   `json:"amountEarnedSinceLastPurge"`
+	AmountEarnedThisMoon       *hexutil.Big   `json:"amountEarnedThisMoon"`
 }
 
 type RPCValidatorRewardRecord struct {
@@ -73,16 +73,16 @@ func newRewardRecord() *RewardRecord {
 
 func toRewardRecord(rpcRc rpcRewardRecord) *RewardRecord {
 	rs := newRewardRecord()
-	rs.RunningTotal = rpcRc.RunningTotal.ToInt()
+	rs.RunningTotal = (*big.Int)(rpcRc.RunningTotal)
 	for _, d := range rpcRc.Daily {
-		rs.Daily = append(rs.Daily, d.ToInt())
+		rs.Daily = append(rs.Daily, (*big.Int)(d))
 	}
 	for _, m := range rpcRc.Monthly {
-		rs.Monthly = append(rs.Monthly, m.ToInt())
+		rs.Monthly = append(rs.Monthly, (*big.Int)(m))
 	}
-	rs.AmountEarnedToday = rpcRc.AmountEarnedToday.ToInt()
-	rs.AmountEarnedSinceLastPurge = rpcRc.AmountEarnedSinceLastPurge.ToInt()
-	rs.AmountEarnedThisMoon = rpcRc.AmountEarnedThisMoon.ToInt()
+	rs.AmountEarnedToday = (*big.Int)(rpcRc.AmountEarnedToday)
+	rs.AmountEarnedSinceLastPurge = (*big.Int)(rpcRc.AmountEarnedSinceLastPurge)
+	rs.AmountEarnedThisMoon = (*big.Int)(rpcRc.AmountEarnedThisMoon)
 
 	return rs
 }
