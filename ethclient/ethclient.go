@@ -334,6 +334,18 @@ func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) 
 	return (*big.Int)(&total), nil
 }
 
+func (ec *Client) GetDateLogs(ctx context.Context) ([]string, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_getDateLogs"); err != nil {
+		return nil, err
+	}
+	var rs []string
+	if err := json.Unmarshal(raw, &rs); err != nil {
+		return nil, err
+	}
+	return rs, nil
+}
+
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
 // Note that the receipt is not available for pending transactions.
 func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
