@@ -335,7 +335,7 @@ func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) 
 }
 
 func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.PurgeHistoryResult, error) {
-	var raw *types.PurgeHistoryResult
+	var raw *types.PurgeHistoryResultJSON
 	err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults", index)
 	if err != nil {
 		return nil, err
@@ -343,7 +343,7 @@ func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.Pur
 	if raw == nil {
 		return nil, ethereum.NotFound
 	}
-	return raw, nil
+	return raw.ToPurgeHistoryResult(), nil
 }
 
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
