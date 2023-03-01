@@ -336,8 +336,12 @@ func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) 
 
 func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.PurgeHistoryResult, error) {
 	var raw *types.PurgeHistoryResult
-	if err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults"); err != nil {
+	err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults", index)
+	if err != nil {
 		return nil, err
+	}
+	if raw == nil {
+		return nil, ethereum.NotFound
 	}
 	return raw, nil
 }
