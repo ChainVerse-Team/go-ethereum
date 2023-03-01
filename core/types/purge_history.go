@@ -1,6 +1,10 @@
 package types
 
-import "github.com/ethereum/go-ethereum/common/hexutil"
+import (
+	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"strings"
+)
 
 type PurgeHistoryResultJSON struct {
 	DemotedAscendance   []hexutil.Uint64 `json:"demoted_ascendance"`
@@ -43,4 +47,19 @@ func convertUtilUint64ArrayToUint64Array(arr []hexutil.Uint64) []uint64 {
 		rs = append(rs, uint64(ele))
 	}
 	return rs
+}
+
+func (p *PurgeHistoryResult) String() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Demoted Ascendance:\t\t %v\n", p.DemotedAscendance))
+	sb.WriteString(fmt.Sprintf("Promoted Paladin:\t\t %v\n", p.PromotedPaladin))
+	sb.WriteString(fmt.Sprintf("Demoted Paladin:\t\t %v\n", p.DemotedPaladin))
+	sb.WriteString(fmt.Sprintf("Promoted Templar:\t\t %v\n", p.PromotedTemplar))
+	sb.WriteString(fmt.Sprintf("Demoted Templar:\t\t %v\n", p.DemotedTemplar))
+	sb.WriteString(fmt.Sprintf("Promoted Cavalier:\t\t %v\n", p.PromotedCavalier))
+	sb.WriteString(fmt.Sprintf("Demoted Cavalier:\t\t %v\n", p.DemotedCavalier))
+	sb.WriteString(fmt.Sprintf("Promoted Legionnaire:\t\t %v\n", p.PromotedLegionnaire))
+	sb.WriteString(fmt.Sprintln("Demoted: List of Token IDs sorted by lowest to highest SCREE won"))
+	sb.WriteString(fmt.Sprintln("Promoted: List of Token IDs sorted by highest to lowest SCREE won"))
+	return sb.String()
 }
