@@ -334,6 +334,14 @@ func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) 
 	return (*big.Int)(&total), nil
 }
 
+func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.PurgeHistoryResult, error) {
+	var raw *types.PurgeHistoryResult
+	if err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults"); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
 // Note that the receipt is not available for pending transactions.
 func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
