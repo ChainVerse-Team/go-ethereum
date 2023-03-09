@@ -346,6 +346,18 @@ func (ec *Client) GetDateLogs(ctx context.Context) ([]string, error) {
 	return rs, nil
 }
 
+func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.PurgeHistoryResult, error) {
+	var raw *types.PurgeHistoryResultJSON
+	err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults", index)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, ethereum.NotFound
+	}
+	return raw.ToPurgeHistoryResult(), nil
+}
+
 // TransactionReceipt returns the receipt of a transaction by transaction hash.
 // Note that the receipt is not available for pending transactions.
 func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
