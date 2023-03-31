@@ -334,6 +334,45 @@ func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) 
 	return (*big.Int)(&total), nil
 }
 
+// GetTotalFee returns total fee ever issued
+func (ec *Client) GetTotalFee(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_totalFee"); err != nil {
+		return nil, err
+	}
+	var total hexutil.Big
+	if err := json.Unmarshal(raw, &total); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&total), nil
+}
+
+// GetTotalFeeValidators returns total fee ever issued to validators
+func (ec *Client) GetTotalFeeValidators(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_totalFeeValidators"); err != nil {
+		return nil, err
+	}
+	var total hexutil.Big
+	if err := json.Unmarshal(raw, &total); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&total), nil
+}
+
+// GetTotalFeeCovenants returns total fee ever issued to covenant members
+func (ec *Client) GetTotalFeeCovenants(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_totalFeeCovenants"); err != nil {
+		return nil, err
+	}
+	var total hexutil.Big
+	if err := json.Unmarshal(raw, &total); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&total), nil
+}
+
 func (ec *Client) GetPurgeResults(ctx context.Context, index uint64) (*types.PurgeHistoryResult, error) {
 	var raw *types.PurgeHistoryResultJSON
 	err := ec.c.CallContext(ctx, &raw, "eth_getPurgeResults", index)
