@@ -321,6 +321,19 @@ func (ec *Client) GetTotalSupply(ctx context.Context) (*big.Int, error) {
 	return (*big.Int)(&total), nil
 }
 
+// GetOutStanding returns the total amount (minted - burned tokens sent to 0x00)
+func (ec *Client) GetOutStanding(ctx context.Context) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := ec.c.CallContext(ctx, &raw, "eth_outStanding"); err != nil {
+		return nil, err
+	}
+	var total hexutil.Big
+	if err := json.Unmarshal(raw, &total); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&total), nil
+}
+
 // GetTotalSupplyCovenant returns total amount of tokens ever issued. This covers only Mining Bonus have been issued to Covenant Members
 func (ec *Client) GetTotalSupplyCovenant(ctx context.Context) (*big.Int, error) {
 	var raw json.RawMessage
